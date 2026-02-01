@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Groups</title>
+</head>
+<body>
+    <center>
+        <h1>Study Groups</h1>
+        <p>Welcome, <b id="username"></b>!</p>
+        
+        <div>
+            <button onclick="createGroup()">Create New Group</button>
+            <button onclick="showGroups()">Refresh Groups</button>
+            <button onclick="window.location.href='homepage.html'">Back to Home</button>
+            <button onclick="logout()">Logout</button>
+        </div>
+        
+        <br>
+        
+        <div id="groupsList">
+            <!-- Groups will appear here -->
+        </div>
+    </center>
+    
+    <script>
+        // Show current username
+        document.getElementById("username").textContent = sessionStorage.currentUser;
+        
+        // Logout function
+        function logout() {
+            sessionStorage.removeItem("currentUser");
+            window.location.href = "index.html";
+        }
+    </script>
+    
+    <script src="groups.js"></script>
+</body>
+</html>

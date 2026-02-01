@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="light dark">
+    <title><h2 id="timer">00:00:00</h2></title>
+</head>
+<body>
+  
+<meta name="color-scheme" content="light dark">
+
+<h1>Study Stopwatch</h1>
+
+<div>
+    <h2 id="timer">00:00:00</h2>
+</div>
+
+<div>
+    <button onclick="toggle()" id="control">START</button>
+    <button onclick="saveSession()">SAVE SESSION</button>
+    <button onclick="clearAll()">CLEAR ALL</button>
+</div>
+
+<br>
+
+<div>
+    <h3>Today's Total: <span id="todayTotal">00:00:00</span></h3>
+    Sessions Today: <span id="todayCount">0</span>
+</div>
+
+<br>
+
+<div>
+    <h3>All Time Total: <span id="allTimeTotal">00:00:00</span></h3>
+    Total Sessions: <span id="totalSessions">0</span>
+</div>
+
+<br>
+
+<div>
+    <h3>Recent Sessions:</h3>
+    <div id="history"></div>
+</div>
+
+    <script src="stopwatch.js" defer></script>
+
+</body>
+</html>
