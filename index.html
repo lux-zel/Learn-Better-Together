@@ -3,17 +3,15 @@
 <head>
     <meta http-equiv="Content-Security-Policy" 
       content="default-src 'self' https:; 
-               script-src 'self' 'unsafe-inline' https: https://www.gstatic.com;
-               style-src 'self' 'unsafe-inline' https:;
+               script-src 'self' https: https://www.gstatic.com;
+               style-src 'self' https:;
                img-src 'self' https: data:;">
     <meta charset="UTF-8">
     <meta name="color-scheme" content="light dark">
     <title>Login or Signup</title>
     <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
-    <!-- Your Firebase config -->
-    <script src="firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -45,18 +43,18 @@
         <br>
 
         <div>
-            <input type="password" id="password" required minlength="6" placeholder="password (min 6 characters)" style="width: 90%; padding: 8px;">
+            <input type="password" id="password" required minlength="8" placeholder="password (min 8 characters)" style="width: 90%; padding: 8px;">
         </div>
 
         <br>
 
         <div>
-            <button onclick="signUp()" style="padding: 8px 20px; margin-right: 10px;">Sign Up</button>
-            <button onclick="signIn()" style="padding: 8px 20px;">Login</button>
+            <button id="signUpBtn" style="padding: 8px 20px; margin-right: 10px;">Sign Up</button>
+            <button id="signInBtn" style="padding: 8px 20px;">Login</button>
         </div>
         
         <div style="margin-top: 15px; font-size: 14px;">
-            <p><a href="javascript:void(0)" onclick="resetPassword()" style="color: #4285f4;">Forgot password?</a></p>
+            <p><a href="#" id="resetPasswordLink" style="color: #4285f4;">Forgot password?</a></p>
         </div>
     </div>
 </center>
@@ -81,13 +79,25 @@
         <br>
         
         <div>
-            <button onclick="signOut()" style="padding: 8px 20px;">Logout</button>
+            <button id="signOutBtn" style="padding: 8px 20px;">Logout</button>
         </div>
     </div>
 </center>
 
 <!-- Main script -->
-<script src="auth.js"></script>
+<script type="module">
+    import './src/firebase-config.js'
+    import './src/auth.js'
+    
+    // Event listeners for buttons
+    document.getElementById('signUpBtn').addEventListener('click', signUp);
+    document.getElementById('signInBtn').addEventListener('click', signIn);
+    document.getElementById('signOutBtn').addEventListener('click', signOut);
+    document.getElementById('resetPasswordLink').addEventListener('click', function(e) {
+        e.preventDefault();
+        resetPassword();
+    });
+</script>
 
 </body>
 </html>

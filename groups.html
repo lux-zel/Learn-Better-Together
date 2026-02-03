@@ -3,27 +3,30 @@
 <head>
     <meta http-equiv="Content-Security-Policy" 
       content="default-src 'self' https:; 
-               script-src 'self' 'unsafe-inline' https:;
-               style-src 'self' 'unsafe-inline' https:;
+               script-src 'self' https:;
+               style-src 'self' https:;
                img-src 'self' https: data:;">
     <meta charset="UTF-8">
     <meta name="color-scheme" content="light dark">
     <title>Groups</title>
+    <!-- Firebase SDK (needed for this page) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
     <meta name="color-scheme" content="light dark">
-
 
     <center>
         <h1>Study Groups</h1>
         <p>Welcome, <b id="username"></b>!</p>
         
         <div>
-            <button onclick="createGroup()">Create New Group</button>
-            <button onclick="showGroups()">Refresh Groups</button>
-            <button onclick="window.location.href='homepage.html'">Back to Home</button>
-            <button onclick="logout()">Logout</button>
+            <button id="createGroupBtn">Create New Group</button>
+            <button id="refreshGroupsBtn">Refresh Groups</button>
+            <button id="backHomeBtn">Back to Home</button>
+            <button id="logoutBtn">Logout</button>
         </div>
         
         <br>
@@ -33,17 +36,30 @@
         </div>
     </center>
     
-    <script>
+    <script type="module">
+        import './src/firebase-config.js'
+        import './src/auth.js'
+        import './src/groups.js'
+        
+        // Get auth instance
+        const auth = firebase.auth();
+        
         // Show current username
-        document.getElementById("username").textContent = sessionStorage.currentUser;
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                document.getElementById("username").textContent = user.email.split('@')[0];
+            } else {
+                document.getElementById("username").textContent = "Guest";
+            }
+        });
         
         // Logout function
-        function logout() {
-            sessionStorage.removeItem("currentUser");
-            window.location.href = "index.html";
+        window.logout = function() {
+            auth.signOut().then(() => {
+                window.location.href = "index.html";
+            });
         }
     </script>
-    
-    <script src="groups.js"></script>
+
 </body>
 </html>
