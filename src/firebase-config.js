@@ -1,7 +1,5 @@
-// Firebase Configuration - Modular SDK
-// Values are injected at build time from environment variables
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getAuth, GithubAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -14,14 +12,12 @@ const firebaseConfig = {
     measurementId: __VITE_FIREBASE_MEASUREMENT_ID__
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export Firebase instances
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const githubProvider = new GithubAuthProvider();
 
 export function initializeFirebase() {
-    // Firebase is already initialized above
     return app;
 }
