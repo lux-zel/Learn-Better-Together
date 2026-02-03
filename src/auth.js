@@ -1,9 +1,66 @@
-// Get Firebase auth instance
-const auth = firebase.auth();
+// Auth with security improvements
+import { auth } from './firebase-config.js';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signOut as firebaseSignOut,
+    onAuthStateChanged,
+    sendEmailVerification,
+    sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+
+// Rate limiting for auth attempts (prevents brute force)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_ATTEMPTS = 5;
+
+function checkRateLimit(key) {
+    const now = Date.now();
+    const attempts = rateLimitMap.get(key) || [];
+    
+    // Remove old attempts outside the window
+    const recentAttempts = attempts.filter(time => now - time < RATE_LIMIT_WINDOW);
+    
+    if (recentAttempts.length >= MAX_ATTEMPTS) {
+        return false;
+    }
+    
+    recentAttempts.push(now);
+    rateLimitMap.set(key, recentAttempts);
+    return true;
+}
+
+// Input validation
+function validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email) && email.length <= 254;
+}
+
+function validatePassword(password) {
+    return password && password.length >= 8;
+}
+
+// Sanitize error messages (don't expose system details)
+function sanitizeErrorMessage(error) {
+    const errorMap = {
+        'auth/email-already-in-use': 'Email already in use. Try logging in instead.',
+        'auth/invalid-email': 'Invalid email address.',
+        'auth/weak-password': 'Password is too weak.',
+        'auth/user-not-found': 'No account found with this email.',
+        'auth/wrong-password': 'Incorrect password.',
+        'auth/too-many-requests': 'Too many attempts. Please try again later.',
+        'auth/operation-not-allowed': 'This operation is not allowed.',
+        'auth/invalid-credential': 'Invalid email or password.'
+    };
+    
+    return errorMap[error.code] || 'An error occurred. Please try again.';
+}
 
 // Show message function
-function showMessage(text, isError = false) {
+export function showMessage(text, isError = false) {
     const messageDiv = document.getElementById('message');
+    if (!messageDiv) return;
+    
     messageDiv.textContent = text;
     messageDiv.style.display = 'block';
     messageDiv.style.backgroundColor = isError ? '#f8d7da' : '#d4edda';
@@ -20,137 +77,168 @@ function showMessage(text, isError = false) {
 }
 
 // Check if user is already logged in
-auth.onAuthStateChanged((user) => {
+onAuthStateChanged(auth, (user) => {
     if (user) {
         // User is signed in
-        document.getElementById('auth-container').style.display = 'none';
-        document.getElementById('user-container').style.display = 'block';
+        const authContainer = document.getElementById('auth-container');
+        const userContainer = document.getElementById('user-container');
+        
+        if (authContainer) authContainer.style.display = 'none';
+        if (userContainer) userContainer.style.display = 'block';
         
         // Display user info
-        document.getElementById('user-email').textContent = user.email;
-        document.getElementById('display-email').textContent = user.email;
-        document.getElementById('email-verified').textContent = user.emailVerified ? '✅ Yes' : '❌ No';
+        const userEmail = document.getElementById('user-email');
+        const displayEmail = document.getElementById('display-email');
+        const emailVerified = document.getElementById('email-verified');
         
+        if (userEmail) userEmail.textContent = sanitizeEmail(user.email);
+        if (displayEmail) displayEmail.textContent = sanitizeEmail(user.email);
+        if (emailVerified) emailVerified.textContent = user.emailVerified ? '✅ Yes' : '❌ No';
     } else {
         // User is signed out
-        document.getElementById('auth-container').style.display = 'block';
-        document.getElementById('user-container').style.display = 'none';
+        const authContainer = document.getElementById('auth-container');
+        const userContainer = document.getElementById('user-container');
+        
+        if (authContainer) authContainer.style.display = 'block';
+        if (userContainer) userContainer.style.display = 'none';
     }
 });
 
+// Sanitize email display (hide part of email)
+function sanitizeEmail(email) {
+    const [localPart, domain] = email.split('@');
+    const hidden = localPart.slice(0, 2) + '*'.repeat(Math.max(0, localPart.length - 2));
+    return `${hidden}@${domain}`;
+}
+
 // Sign up function
-async function signUp() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+export async function signUp() {
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    
+    if (!emailInput || !passwordInput) return;
+    
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
     
     if (!email || !password) {
         showMessage('Please enter both email and password', true);
         return;
     }
     
-    if (password.length < 8) {
+    if (!validateEmail(email)) {
+        showMessage('Please enter a valid email address', true);
+        return;
+    }
+    
+    if (!validatePassword(password)) {
         showMessage('Password must be at least 8 characters', true);
         return;
     }
     
+    if (!checkRateLimit(`signup_${email}`)) {
+        showMessage('Too many signup attempts. Please try again later.', true);
+        return;
+    }
+    
     try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         
         // Send email verification
-        await userCredential.user.sendEmailVerification();
+        await sendEmailVerification(userCredential.user);
         
         showMessage('Account created! Please check your email for verification link.');
         
         // Clear form
-        document.getElementById('email').value = '';
-        document.getElementById('password').value = '';
-        
+        emailInput.value = '';
+        passwordInput.value = '';
     } catch (error) {
-        let errorMessage = 'Error: ';
-        switch (error.code) {
-            case 'auth/email-already-in-use':
-                errorMessage = 'Email already in use. Try logging in instead.';
-                break;
-            case 'auth/invalid-email':
-                errorMessage = 'Invalid email address.';
-                break;
-            case 'auth/weak-password':
-                errorMessage = 'Password is too weak.';
-                break;
-            default:
-                errorMessage += error.message;
-        }
-        showMessage(errorMessage, true);
+        showMessage(sanitizeErrorMessage(error), true);
     }
 }
 
 // Sign in function
-async function signIn() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+export async function signIn() {
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    
+    if (!emailInput || !passwordInput) return;
+    
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
     
     if (!email || !password) {
         showMessage('Please enter both email and password', true);
         return;
     }
     
-    try {
-        await auth.signInWithEmailAndPassword(email, password);
-        showMessage('Login successful!');
-        
-        // Clear form
-        document.getElementById('email').value = '';
-        document.getElementById('password').value = '';
-        
-    } catch (error) {
-        let errorMessage = 'Error: ';
-        switch (error.code) {
-            case 'auth/user-not-found':
-                errorMessage = 'No account found with this email. Sign up first.';
-                break;
-            case 'auth/wrong-password':
-                errorMessage = 'Incorrect password.';
-                break;
-            case 'auth/invalid-email':
-                errorMessage = 'Invalid email address.';
-                break;
-            default:
-                errorMessage += error.message;
-        }
-        showMessage(errorMessage, true);
+    if (!validateEmail(email)) {
+        showMessage('Please enter a valid email address', true);
+        return;
     }
-}
-
-// Sign out function
-async function signOut() {
-    try {
-        await auth.signOut();
-        showMessage('Logged out successfully');
-    } catch (error) {
-        showMessage('Error logging out: ' + error.message, true);
-    }
-}
-
-// Reset password function
-async function resetPassword() {
-    const email = document.getElementById('email').value || prompt('Enter your email address:');
     
-    if (!email) {
-        showMessage('Please enter your email address', true);
+    if (!checkRateLimit(`signin_${email}`)) {
+        showMessage('Too many login attempts. Please try again later.', true);
         return;
     }
     
     try {
-        await auth.sendPasswordResetEmail(email);
+        await signInWithEmailAndPassword(auth, email, password);
+        showMessage('Login successful!');
+        emailInput.value = '';
+        passwordInput.value = '';
+    } catch (error) {
+        showMessage(sanitizeErrorMessage(error), true);
+    }
+}
+
+// Sign out function
+export async function signOut() {
+    try {
+        await firebaseSignOut(auth);
+        showMessage('Logged out successfully');
+    } catch (error) {
+        showMessage(sanitizeErrorMessage(error), true);
+    }
+}
+
+// Reset password function
+export async function resetPassword() {
+    const emailInput = document.getElementById('email');
+    let email = emailInput ? emailInput.value.trim() : '';
+    
+    if (!email) {
+        email = prompt('Enter your email address:');
+        if (!email) {
+            showMessage('Please enter your email address', true);
+            return;
+        }
+    }
+    
+    if (!validateEmail(email)) {
+        showMessage('Please enter a valid email address', true);
+        return;
+    }
+    
+    if (!checkRateLimit(`reset_${email}`)) {
+        showMessage('Too many password reset attempts. Please try again later.', true);
+        return;
+    }
+    
+    try {
+        await sendPasswordResetEmail(auth, email);
         showMessage('Password reset email sent! Check your inbox.');
     } catch (error) {
-        showMessage('Error: ' + error.message, true);
+        showMessage(sanitizeErrorMessage(error), true);
     }
 }
 
 // Enter key support for password field
-document.getElementById('password').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        signIn();
-    }
-});
+const passwordInput = document.getElementById('password');
+if (passwordInput) {
+    passwordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            signIn();
+        }
+    });
+}

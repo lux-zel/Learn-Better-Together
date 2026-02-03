@@ -1,117 +1,153 @@
-// Firestore-backed groups implementation
-const db = firebase.firestore();
+// Firestore-backed groups implementation with security improvements
+import { auth, db } from './firebase-config.js';
+import { 
+    collection, 
+    addDoc, 
+    getDocs,
+    getDoc,
+    doc,
+    updateDoc,
+    deleteDoc,
+    arrayUnion,
+    arrayRemove,
+    serverTimestamp,
+    query,
+    orderBy,
+    onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// Utility: escape text when inserting into textContent (uses textContent so safe)
+// Input validation
+function validateGroupName(name) {
+    if (!name || typeof name !== 'string') return false;
+    const trimmed = name.trim();
+    return trimmed.length >= 2 && trimmed.length <= 100;
+}
+
+// Sanitize group name (prevent XSS)
+function sanitizeGroupName(name) {
+    return String(name).trim().slice(0, 100);
+}
 
 // Create a new group
-async function createGroup() {
-    const user = firebase.auth().currentUser;
+export async function createGroup() {
+    const user = auth.currentUser;
     if (!user) {
         alert('You must be logged in to create a group');
         return;
     }
 
-    const name = prompt('Enter group name:');
+    const name = prompt('Enter group name (2-100 characters):');
     if (!name) return;
 
-    if (name.length < 2 || name.length > 100) {
+    if (!validateGroupName(name)) {
         alert('Group name must be between 2 and 100 characters');
         return;
     }
 
     try {
-        await db.collection('groups').add({
-            name: name,
+        const sanitizedName = sanitizeGroupName(name);
+        await addDoc(collection(db, 'groups'), {
+            name: sanitizedName,
             createdBy: user.uid,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdAt: serverTimestamp(),
             members: [user.uid],
             maxSize: 10
         });
         alert('Group created!');
     } catch (err) {
-        alert('Error creating group: ' + err.message);
+        // Sanitize error message
+        const errorMsg = err.code ? 'Error creating group. Please try again.' : err.message;
+        alert(errorMsg);
     }
 }
 
 // Join a group
-async function joinGroup(groupId) {
-    const user = firebase.auth().currentUser;
+export async function joinGroup(groupId) {
+    const user = auth.currentUser;
     if (!user) {
         alert('You must be logged in to join a group');
         return;
     }
 
     try {
-        const docRef = db.collection('groups').doc(groupId);
-        const doc = await docRef.get();
-        if (!doc.exists) {
+        const docRef = doc(db, 'groups', groupId);
+        const docSnap = await getDoc(docRef);
+        
+        if (!docSnap.exists()) {
             alert('Group not found');
             return;
         }
 
-        const data = doc.data();
-        if (data.members.includes(user.uid)) {
+        const data = docSnap.data();
+        if ((data.members || []).includes(user.uid)) {
             alert("You're already in this group!");
             return;
         }
 
-        if (data.members.length >= data.maxSize) {
+        if ((data.members || []).length >= (data.maxSize || 10)) {
             alert('Group is full!');
             return;
         }
 
-        await docRef.update({
-            members: firebase.firestore.FieldValue.arrayUnion(user.uid)
+        await updateDoc(docRef, {
+            members: arrayUnion(user.uid)
         });
         alert('Joined group!');
     } catch (err) {
-        alert('Error joining group: ' + err.message);
+        const errorMsg = err.code ? 'Error joining group. Please try again.' : err.message;
+        alert(errorMsg);
     }
 }
 
 // Leave a group
-async function leaveGroup(groupId) {
-    const user = firebase.auth().currentUser;
+export async function leaveGroup(groupId) {
+    const user = auth.currentUser;
     if (!user) {
         alert('You must be logged in to leave a group');
         return;
     }
 
     try {
-        const docRef = db.collection('groups').doc(groupId);
-        const doc = await docRef.get();
-        if (!doc.exists) {
+        const docRef = doc(db, 'groups', groupId);
+        const docSnap = await getDoc(docRef);
+        
+        if (!docSnap.exists()) {
             alert('Group not found');
             return;
         }
 
-        await docRef.update({
-            members: firebase.firestore.FieldValue.arrayRemove(user.uid)
+        await updateDoc(docRef, {
+            members: arrayRemove(user.uid)
         });
 
         // Remove group if empty
-        const updated = await docRef.get();
-        const members = updated.exists ? updated.data().members || [] : [];
+        const updated = await getDoc(docRef);
+        const members = updated.exists() ? (updated.data().members || []) : [];
         if (members.length === 0) {
-            await docRef.delete();
+            await deleteDoc(docRef);
         }
 
         alert('Left group!');
     } catch (err) {
-        alert('Error leaving group: ' + err.message);
+        const errorMsg = err.code ? 'Error leaving group. Please try again.' : err.message;
+        alert(errorMsg);
     }
 }
 
-// Display all groups (real-time)
-function showGroups() {
+// Display all groups (real-time) with sanitized member display
+export function showGroups() {
     const container = document.getElementById('groupsList');
+    if (!container) return;
+    
     container.innerHTML = '';
 
     const heading = document.createElement('h2');
     heading.textContent = 'All Groups';
     container.appendChild(heading);
 
-    db.collection('groups').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    const groupsQuery = query(collection(db, 'groups'), orderBy('createdAt', 'desc'));
+    
+    onSnapshot(groupsQuery, (snapshot) => {
         container.innerHTML = '';
         container.appendChild(heading);
 
@@ -136,17 +172,18 @@ function showGroups() {
             headerRow.appendChild(th);
         });
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
             const row = table.insertRow();
 
             const cell1 = row.insertCell(0);
-            cell1.textContent = `${data.name} (${(data.members || []).length}/${data.maxSize})`;
+            cell1.textContent = `${sanitizeGroupName(data.name)} (${(data.members || []).length}/${data.maxSize || 10})`;
             cell1.style.border = '1px solid #ccc';
             cell1.style.padding = '8px';
 
+            // Show member count instead of raw UIDs (privacy)
             const cell2 = row.insertCell(1);
-            cell2.textContent = (data.members || []).join(', ');
+            cell2.textContent = `${(data.members || []).length} member${(data.members || []).length !== 1 ? 's' : ''}`;
             cell2.style.border = '1px solid #ccc';
             cell2.style.padding = '8px';
 
@@ -155,14 +192,15 @@ function showGroups() {
             cell3.style.padding = '8px';
 
             const button = document.createElement('button');
-            const currentUser = firebase.auth().currentUser;
+            const currentUser = auth.currentUser;
             const isMember = currentUser && (data.members || []).includes(currentUser.uid);
+            
             if (isMember) {
                 button.textContent = 'Leave';
-                button.addEventListener('click', () => leaveGroup(doc.id));
+                button.addEventListener('click', () => leaveGroup(docSnap.id));
             } else {
                 button.textContent = 'Join';
-                button.addEventListener('click', () => joinGroup(doc.id));
+                button.addEventListener('click', () => joinGroup(docSnap.id));
             }
             cell3.appendChild(button);
         });
@@ -170,7 +208,7 @@ function showGroups() {
         container.appendChild(table);
     }, err => {
         const p = document.createElement('p');
-        p.textContent = 'Error loading groups: ' + err.message;
+        p.textContent = 'Error loading groups. Please try again.';
         container.appendChild(p);
     });
 }
@@ -187,14 +225,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (refreshBtn) refreshBtn.addEventListener('click', showGroups);
     if (backBtn) backBtn.addEventListener('click', () => window.location.href = 'homepage.html');
     if (logoutBtn) logoutBtn.addEventListener('click', () => {
-        firebase.auth().signOut().then(() => window.location.href = 'index.html');
+        auth.signOut().then(() => window.location.href = 'index.html');
     });
 
     // Ensure user is logged in before showing groups
-    const user = firebase.auth().currentUser;
+    const user = auth.currentUser;
     if (!user) {
         // If auth state not ready yet, wait for it
-        firebase.auth().onAuthStateChanged(u => {
+        onAuthStateChanged(auth, (u) => {
             if (!u) {
                 alert('Please login first!');
                 window.location.href = 'index.html';

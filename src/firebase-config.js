@@ -1,5 +1,9 @@
-// Firebase Configuration
+// Firebase Configuration - Modular SDK
 // Values are injected at build time from environment variables
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
 const firebaseConfig = {
     apiKey: __VITE_FIREBASE_API_KEY__,
     authDomain: __VITE_FIREBASE_AUTH_DOMAIN__,
@@ -11,4 +15,13 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
+
+// Export Firebase instances
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+export function initializeFirebase() {
+    // Firebase is already initialized above
+    return app;
+}
