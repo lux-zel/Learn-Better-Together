@@ -9,7 +9,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
 const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_WINDOW = 60000;
 const MAX_ATTEMPTS = 5;
 
 function checkRateLimit(key) {
@@ -83,7 +83,7 @@ onAuthStateChanged(auth, (user) => {
         
         if (userEmail) userEmail.textContent = sanitizeEmail(user.email);
         if (displayEmail) displayEmail.textContent = sanitizeEmail(user.email);
-        if (emailVerified) emailVerified.textContent = user.emailVerified ? '✅ Yes' : '❌ No';
+        if (emailVerified) emailVerified.textContent = user.emailVerified ? 'Yes' : 'No';
     } else {
         const authContainer = document.getElementById('auth-container');
         const userContainer = document.getElementById('user-container');
