@@ -22,13 +22,17 @@ Promise.all([
     waitForElement('signUpBtn'),
     waitForElement('signInBtn'),
     waitForElement('signOutBtn'),
-    waitForElement('resetPasswordLink')
-]).then(([signUpBtn, signInBtn, signOutBtn, resetLink]) => {
+    waitForElement('resetPasswordLink'),
+    waitForElement('homeBtn')
+]).then(([signUpBtn, signInBtn, signOutBtn, resetLink, homeBtn]) => {
     signUpBtn.addEventListener('click', signUp);
     signInBtn.addEventListener('click', signIn);
     signOutBtn.addEventListener('click', signOut);
     resetLink.addEventListener('click', (e) => {
         e.preventDefault();
         resetPassword();
+    });
+    homeBtn.addEventListener('click', () => {
+        window.location.href = './homepage.html';
     });
 });
