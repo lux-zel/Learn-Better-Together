@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta http-equiv="Content-Security-Policy" 
+            content="default-src 'self'; 
+                             script-src 'self' https://www.gstatic.com 'sha256-DKboBMbQnVajEqP0z+yxhRAnhwVpp9VyXeNteRSSXP4=' 'sha256-yei5Fza+Eyx4G0smvN0xBqEesIKumz6RSyGsU3FJowI=';
+                             style-src 'self' 'unsafe-inline';
+                             img-src 'self' data:;
+                             connect-src 'self' https://www.googleapis.com https://*.firebaseio.com https://*.googleapis.com https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com;">
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="light dark">
+    <title>Home</title>
+</head>
+<body>
+
+<div style="text-align: center;">
+    <h1>This is the home page</h1>
+</div>
+
+<br><br><br>
+
+<center>
+    <div style="
+        width: 400px;
+        border: 2px solid #5a5a5a;
+        padding: 30px;
+        margin: 0 auto;
+        background: color-scheme;
+        ">
+        
+        <h2>What would you like to do?</h2>
+        
+        <div style="margin: 20px 0;">
+            <button id="groupsBtn" style="padding: 12px 30px; margin: 10px; font-size: 16px; cursor: pointer;">Groups</button>
+        </div>
+        
+        <div style="margin: 20px 0;">
+            <button id="stopwatchBtn" style="padding: 12px 30px; margin: 10px; font-size: 16px; cursor: pointer;">Stopwatch</button>
+        </div>
+        
+        <br>
+        
+        <div style="margin-top: 30px; border-top: 1px solid #5a5a5a; padding-top: 20px;">
+            <button id="logoutBtn" style="padding: 8px 20px; background-color: #d32f2f; color: white; cursor: pointer;">Logout</button>
+        </div>
+    </div>
+</center>
+
+<script type="module" src="./src/homepage.js"></script>
+
+
